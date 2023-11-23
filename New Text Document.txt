@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import os.path
-
+import numpy as np
 # constants to covert to size
 MB = 2
 GB = 3
@@ -23,7 +23,7 @@ def create_list_of_all_files_into_csv(root, folder_counter):
             if not os.path.islink(file_path):
                 file_size = os.path.getsize(file_path)
                 # converts to  MBs (GB would be 3)
-                size = (file_size / 1024)**MB
+                size = file_size / 1024**MB
                 _, extension = os.path.splitext(file)
 
             # adds files into the dataframe
@@ -32,20 +32,29 @@ def create_list_of_all_files_into_csv(root, folder_counter):
             df.loc[i, "File_type"] = extension
             df.loc[i, "Location"] = file_path
 
-            # print(f"Filepath name is: {file} and size is: {size:.2f}")
+            # print(f"Filepath name is: {file} and size is: {si`ze:.2f}")
             i+=1
-        # df.loc[i] = df[["Size (MB)", "File_type"]].groupby(["File_type"]).aggregate(["sum","count"])
-    new_df = df[["Size (MB)", "File_type"]].groupby(["File_type"]).aggregate(["sum","count"]).droplevel(0, axis=1)
-    # new_df = df[["File_type", "Size (MB)"]].groupby("File_type").aggregate({'Unique file type':'count','Total Size':'sum','Total Count':'max'}).copy()
-    # print(new_df)
-    # print(new_df["sum"]) 
-    print(df.join(new_df, lsuffix='_caller', rsuffix='_other'))
-    # print(df)
 
-    # df.to_csv(f"C:/Users/jordan.shiu/OneDrive - AECOM/Desktop/File Size App/test_{folder_counter}.csv")
+    # creates a new df that shows only cols size and file type and is grouped by filetype. We aggregate the sum of size and count of file types
+    # and we drop the firt row and the reset index to combine to the old df
+    # we the change the sum col to float type and also round to 2 dp
+    stats_df = df[["Size (MB)", "File_type"]].groupby(["File_type"]).aggregate(["sum","count"]).droplevel(0, axis=1).reset_index()
+    stats_df['sum'] = stats_df['sum'].astype(float)
+    stats_df['sum'] = np.around(stats_df['sum'], 2)
+
+    # reset the index of original df and overwirte it (inplace = True) and then we join with other df
+    df.reset_index(inplace=True)
+    df = df.join(stats_df, lsuffix='_caller', rsuffix='_other')
+
+    # now we clean up the DF by dropping the index named col
+    df.drop('index', inplace=True, axis=1)
+
+    # export it to Execl
+    df.to_csv(f"C:/Users/Jordan/OneDrive/Documents/VsCode Projects/Data Analysis for CLR/test_{folder_counter}.csv", index=False)
 
 # root = "C:/Users/jordan.shiu/OneDrive - AECOM//0. Working Folder - CLR2 TA - Movement Workstream"
-root = "C:/Users/jordan.shiu/OneDrive - AECOM/Documents/Grad 2021/CLR/12_09_2022 Contruction Phase"
+root = "C:/Users/Jordan/OneDrive/Documents/University 2021 Feb update/UNSW 2021 Sem 1"
+# root = "C:/Users/jordan.shiu/OneDrive - AECOM/Documents/Grad 2021/CLR/12_09_2022 Contruction Phase"
 list_of_main_folders = find_main_folders(root)
 folder_counter = 1
 # create_list_of_all_files_into_csv(dir_path)
